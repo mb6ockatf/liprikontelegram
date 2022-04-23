@@ -1,8 +1,12 @@
 import telebot
 import datetime
 import time
-from config import *
+from os import environ
 
+token = str(environ.get('token'))
+good = "✅ "
+bad = "❌ "
+ex = f"{bad}Some error appeared"
 bot = telebot.TeleBot(token)
 # Shorten some code
 answer = bot.reply_to
