@@ -1,14 +1,14 @@
+from threading import Thread
 import telebot
-import datetime
-import time
-from os import environ
+from time import sleep
+from datetime import time
+from os import environ, system
 
 token = str(environ.get('token'))
 good = "✅ "
 bad = "❌ "
 ex = f"{bad}Some error appeared"
 bot = telebot.TeleBot(token)
-# Shorten some code
 answer = bot.reply_to
 send = bot.send_message
 
@@ -46,5 +46,11 @@ def show_time(message):
     send(message.chat.id, f"{good}{datetime.datetime.now()}")
 
 
+def autofetch():
+    while True:
+        system('git fetch')
+        sleep(3600)
+
 if __name__ == '__main__':
-    bot.infinity_polling()
+    Thread(target=bot.infinity_polling).start()
+    Thread(target=autofetch).start()
