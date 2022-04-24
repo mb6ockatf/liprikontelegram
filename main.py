@@ -71,10 +71,12 @@ def full_search(message):
 
 def auto_fetch():
     while True:
-        system('git fetch')
+        system('git pull')
         sleep(3600)
 
 
 if __name__ == '__main__':
     Thread(target=bot.infinity_polling).start()
+
+    # Comment this function when testing!
     Thread(target=auto_fetch).start()
