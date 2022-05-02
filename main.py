@@ -26,8 +26,7 @@ class MessageInterpretation:
 
 get_message_contents = MessageInterpretation.get_message_contents
 prepare_for_request = MessageInterpretation.prepare_for_request
-# token = str(environ.get('token'))
-token = '5156058215:AAHGs87k74dEVTNGzJ5SV5tdaRSjY5n8ADA'
+token = str(environ.get('token'))
 good = "✅ "
 bad = "❌ "
 bullet_points = {'shield': '🔰 ', 'red': '🔴 ', 'orange': '🟧 '}
