@@ -16,8 +16,8 @@ __search = {'yandex.ru': _search['yandex.ru'], 'www.google.com': _search['www.go
 
 class MessageInterpretation:
     @staticmethod
-    def prepare_for_request(text: str) -> str:
-        return "+".join(text.split()[1:])
+    def prepare_for_request(message) -> str:
+        return "+".join(message.text.split()[1:])
 
     @staticmethod
     def get_message_contents(message):
@@ -26,8 +26,8 @@ class MessageInterpretation:
 
 get_message_contents = MessageInterpretation.get_message_contents
 prepare_for_request = MessageInterpretation.prepare_for_request
-token = str(environ.get('token'))
-token = '5156058215:AAFRKVszue5TjT222GrKEvfW2CvVPfTR5u4'
+# token = str(environ.get('token'))
+token = '5156058215:AAHGs87k74dEVTNGzJ5SV5tdaRSjY5n8ADA'
 good = "✅ "
 bad = "❌ "
 bullet_points = {'shield': '🔰 ', 'red': '🔴 ', 'orange': '🟧 '}
@@ -68,7 +68,7 @@ def timer(message):
 
 @bot.message_handler(commands=['search'])
 def search(message):
-    link_contents = prepare_for_request(message.text)
+    link_contents = prepare_for_request(message)
     content = get_message_contents(message)
     output = []
     for name, engine in __search.items():
@@ -81,8 +81,8 @@ def search(message):
 
 @bot.message_handler(commands=['full'])
 def full_search(message):
-    body = prepare_for_request(message.text)
-    target = message.text[message.text.find(' '):]
+    body = prepare_for_request(message)
+    target = get_message_contents(message)
     output = []
     for name, engine in _search.items():
         output += [f'<a href="{engine}{body}">{bullet} {name}: {target}</a>\n']
@@ -107,7 +107,6 @@ def translate(message):
     answer(message, response.json()['data']['translations'][0]['translatedText'])
 
 
-
 def auto_fetch():
     while True:
         system('git pull')
@@ -118,4 +117,4 @@ if __name__ == '__main__':
     Thread(target=bot.infinity_polling).start()
 
     # Comment this function when testing!
-    Thread(target=auto_fetch).start()
+    #  Thread(target=auto_fetch).start()
