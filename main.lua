@@ -4,18 +4,12 @@
 - get token from environment variable
 - token argparse parameter
 --]]
-local TOKEN = ""
+local TOKEN = "5156058215:AAHGs87k74dEVTNGzJ5SV5tdaRSjY5n8ADA"
 local api = require("telegram-bot-lua.core").configure(TOKEN)
 local mfr = require("mfr")
 local utils = {}
 local logic = {}
-
-function utils.is_command(text)
-	if text:sub(1, 1) == "/" then
-		return true
-	end
-	return false
-end
+local raw_api_calls = {}
 
 function utils.send_silent_reply(chat_id, text, reply_to_message_id,
 		reply_markup)
@@ -25,72 +19,138 @@ end
 
 function utils.parse_command(text)
 	local text = mfr.space_split(text)
-	return text[1], {table.unpack(text, 2)}
+	return {text[1], table.unpack(text, 2)}
 end
 
-function utils.ban(message)
+function utils.check_admin(member_data)
+	local text
+	local can_restrict = member_data.result.can_restrict_members or false
+	local is_creator = member_data.result.status == "creator"
+	if not can_restrict and not is_creator then
+		return false
+	else
+		return true
+	end
+end
+
+function raw_api_calls.get_user_info(message)
+	local target_message = message.reply_to_message
+	local chat_id = message.chat.id
+	if not target_message then
+		return utils.send_silent_reply(chat_id,
+			"pls answer to message of one you want to remove",
+			message.message_id)
+	end
+	local data = api.get_chat_member(target_message.chat.id,
+		target_message.from.id)
+	data = data.result
+	mfr.pprint(data)
+	data = "``` " .. mfr.prettify_table(data) .. " ```"
+	return api.send_message(chat_id, data, "Markdown",
+		true,  -- disable_web_page_preview
+		true,  -- disable_notification
+		message.message_id)
+end
+
+function raw_api_calls.get_chat_administrators(message)
+	local chat_id = message.chat.id
+	local data
+	data = api.get_chat_administrators(chat_id).result
+	data = "``` " .. mfr.prettify_table(data) .. " ```"
+	return api.send_message(chat_id, data, "Markdown", true, true,
+		message.message_id)
+end
+
+function raw_api_calls.get_chat_members_count(message)
+	local chat_id = message.chat.id
+	local data = api.get_chat_members_count(chat_id).result
+	return utils.send_silent_reply(chat_id, data, message.message_id)
+end
+
+function utils.ban(message, kick)
+	local kick = kick == true or false
 	local chat_id, user_id = message.chat.id, message.from.id
 	local sender = api.get_chat_member(message.chat.id, message.from.id)
 	local bad_message = message.reply_to_message
-	local text, username
-	if not sender.can_restrict_members and not sender.status == "creator" then
-		text = "not enough rights to ban & kick"
-		return utils.send_silent_reply(chat_id, text, message.message_id)
+	local text, username, ban_suspect
+	if not utils.check_admin(sender) then
+		return
 	end
-	bad_message = message.reply_to_message
-	if bad_message then
-		api.ban_chat_member(bad_message.chat.id, bad_message.from.id)
-		text = "banned: " .. bad_message.from.username
-		return utils.send_silent_reply(chat_id, text, message.message_id)
+	if not bad_message then
+		return utils.send_silent_reply(chat_id,
+			"pls answer to message of one you want to remove",
+			message.message_id)
 	end
+	ban_suspect = api.get_chat_member(bad_message.chat.id, bad_message.from.id)
+	if utils.check_admin(ban_suspect) then
+		return utils.send_silent_reply(chat_id, 
+			"ban suspect is an admin. remove admin rights first",
+			message.message_id)
+	end
+	if kick then
+		api.kick_chat_member(bad_message.chat.id, bad_message.from.id)
+		return utils.send_silent_reply(chat_id, 
+			"kicked: " .. bad_message.from.username, message.message_id)
+	end
+	api.ban_chat_member(bad_message.chat.id, bad_message.from.id)
 	return utils.send_silent_reply(chat_id,
-		"pls answer to message of one you want to ban", message.message_id)
+		"banned: " .. bad_message.from.username, message.message_id)
+end
+
+function utils.send_ping(message)
+	local keyboard = api.inline_keyboard()
+		:row(api.row()
+		:callback_data_button("pong", "pong")
+		:callback_data_button("pong", "pong"))
+		return utils.send_silent_reply(message.chat.id, "pong",
+			message.message_id, keyboard)
 end
 
 function logic.perform_command(message)
-	mfr.pprint(message)
-	if message.text:sub(1, 4) == "/ban" then
+	local command = utils.parse_command(message.text)
+	mfr.pprint(command)
+	if command[1] == "/ban" then
 		return utils.ban(message)
+	elseif command[1] == "/kick" then
+		return utils.ban(message, true)
+	elseif command[1] == "/ping" then
+		return utils.send_ping(message)
+	elseif command[1] == "/raw_api" then
+		if command[2] == "get_user" then
+			return raw_api_calls.get_user_info(message)
+		elseif command[2] == "get_chat_administrators" then
+			return raw_api_calls.get_chat_administrators(message)
+		elseif command[2] == "get_chat_members_count" then
+			return raw_api_calls.get_chat_members_count(message)
+		end
 	end
 end
 
 function logic.perform_plain_text(message)
-	if message.text:match("ping") then
-		local keyboard = api.inline_keyboard()
-		:row(api.row()
-		:callback_data_button("pong", "pong"))
-		mfr.pprint(message)
+	if message.text == "ping" then
+		utils.send_ping(message)
 		--print(message.chat.id, message.from.id)
 		--mfr.pprint(api.get_chat_member(message.chat.id, message.from.id))
 		--mfr.pprint(api.get_chat_administrators(message.chat.id))
-		api.send_message(message.chat.id,  -- chat id
+		--[[api.send_message(message.chat.id,  -- chat id
 			"pong",  -- text
 			nil,  -- parse_mode
 			true,  -- disable_web_page_preview
 			false,  -- disable_notification
 			message.id,  -- reply_to_message_id
 			keyboard)  -- reply_markup
+		--]]
 	end
 end
 
 function api.on_message(message)
-	if not message.text then return end
-	if utils.is_command(message.text) then
-		logic.perform_command(message)
-	else
-		logic.perform_plain_text(message)
+	if not message.text then  -- currently support only text messages
+		return
 	end
-	--[[
-	elseif message.text:sub(1, 1) == "/" then
-		command, args = utils.parse_command(message.text)
-		if not command then return end
-		if message.chat.type == 'private' then ; end
-		api.send_message(
-			message.chat.id,
-			"abobadjkfbkdasbf"
-		)
+	if message.text:sub(1, 1) == "/" then
+		return logic.perform_command(message)
 	end
-	--]]
+	return logic.perform_plain_text(message)
 end
 
 
