@@ -1,4 +1,0 @@
-aiogram
-requests
-asyncio
-cowsay
