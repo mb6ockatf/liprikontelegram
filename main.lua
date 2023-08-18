@@ -4,7 +4,9 @@
 - get token from environment variable
 - token argparse parameter
 --]]
-local TOKEN = "5156058215:AAHGs87k74dEVTNGzJ5SV5tdaRSjY5n8ADA"
+local TOKEN = ""
+local http = require("socket.http")
+local url = require("socket.url")
 local api = require("telegram-bot-lua.core").configure(TOKEN)
 local mfr = require("mfr")
 local utils = {}
@@ -13,9 +15,17 @@ local raw_api_calls = {}
 
 function utils.send_silent_reply(chat_id, text, reply_to_message_id,
 		reply_markup)
-	return api.send_message(chat_id, text, nil, true, true,
+	return api.send_message(chat_id, text, "Markdown", true, true,
 		reply_to_message_id, reply_markup)
 end
+		--[[api.send_message(message.chat.id,  -- chat id
+			"pong",  -- text
+			nil,  -- parse_mode
+			true,  -- disable_web_page_preview
+			false,  -- disable_notification
+			message.id,  -- reply_to_message_id
+			keyboard)  -- reply_markup
+		--]]
 
 function utils.parse_command(text)
 	local text = mfr.space_split(text)
@@ -38,13 +48,12 @@ function raw_api_calls.get_user_info(message)
 	local chat_id = message.chat.id
 	if not target_message then
 		return utils.send_silent_reply(chat_id,
-			"pls answer to message of one you want to remove",
+			"pls answer to message",
 			message.message_id)
 	end
 	local data = api.get_chat_member(target_message.chat.id,
 		target_message.from.id)
 	data = data.result
-	mfr.pprint(data)
 	data = "``` " .. mfr.prettify_table(data) .. " ```"
 	return api.send_message(chat_id, data, "Markdown",
 		true,  -- disable_web_page_preview
@@ -54,8 +63,7 @@ end
 
 function raw_api_calls.get_chat_administrators(message)
 	local chat_id = message.chat.id
-	local data
-	data = api.get_chat_administrators(chat_id).result
+	local data = api.get_chat_administrators(chat_id).result
 	data = "``` " .. mfr.prettify_table(data) .. " ```"
 	return api.send_message(chat_id, data, "Markdown", true, true,
 		message.message_id)
@@ -83,18 +91,32 @@ function utils.ban(message, kick)
 	end
 	ban_suspect = api.get_chat_member(bad_message.chat.id, bad_message.from.id)
 	if utils.check_admin(ban_suspect) then
-		return utils.send_silent_reply(chat_id, 
+		return utils.send_silent_reply(chat_id,
 			"ban suspect is an admin. remove admin rights first",
 			message.message_id)
 	end
 	if kick then
 		api.kick_chat_member(bad_message.chat.id, bad_message.from.id)
-		return utils.send_silent_reply(chat_id, 
+		return utils.send_silent_reply(chat_id,
 			"kicked: " .. bad_message.from.username, message.message_id)
 	end
 	api.ban_chat_member(bad_message.chat.id, bad_message.from.id)
 	return utils.send_silent_reply(chat_id,
 		"banned: " .. bad_message.from.username, message.message_id)
+end
+
+function utils.cowsay(message)
+	local chat_id, user_id = message.chat.id, message.from.id
+	local sender = api.get_chat_member(message.chat.id, message.from.id)
+	mfr.pprint(message)
+	local bad_message_text = message.reply_to_message.text
+	local address = "http://cowsay.morecode.org/say?message="
+	address = address .. url.escape(bad_message_text) .. "&format=text"
+	print(address)
+	local body, code, headers, status = http.request(address)
+	body = url.unescape(body):sub(2)
+	return utils.send_silent_reply(chat_id, "``` " .. body .. " ```",
+		message.message_id)
 end
 
 function utils.send_ping(message)
@@ -108,13 +130,14 @@ end
 
 function logic.perform_command(message)
 	local command = utils.parse_command(message.text)
-	mfr.pprint(command)
 	if command[1] == "/ban" then
 		return utils.ban(message)
 	elseif command[1] == "/kick" then
 		return utils.ban(message, true)
 	elseif command[1] == "/ping" then
 		return utils.send_ping(message)
+	elseif command[1] == "/cowsay" then
+		return utils.cowsay(message)
 	elseif command[1] == "/raw_api" then
 		if command[2] == "get_user" then
 			return raw_api_calls.get_user_info(message)
@@ -129,17 +152,6 @@ end
 function logic.perform_plain_text(message)
 	if message.text == "ping" then
 		utils.send_ping(message)
-		--print(message.chat.id, message.from.id)
-		--mfr.pprint(api.get_chat_member(message.chat.id, message.from.id))
-		--mfr.pprint(api.get_chat_administrators(message.chat.id))
-		--[[api.send_message(message.chat.id,  -- chat id
-			"pong",  -- text
-			nil,  -- parse_mode
-			true,  -- disable_web_page_preview
-			false,  -- disable_notification
-			message.id,  -- reply_to_message_id
-			keyboard)  -- reply_markup
-		--]]
 	end
 end
 
@@ -147,6 +159,7 @@ function api.on_message(message)
 	if not message.text then  -- currently support only text messages
 		return
 	end
+	mfr.pprint(message)
 	if message.text:sub(1, 1) == "/" then
 		return logic.perform_command(message)
 	end
