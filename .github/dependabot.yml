@@ -1,0 +1,26 @@
+# dependabot.yml - keep the workflow actions and the base image up to date.
+#
+# Copyright (C) 2026 mb6ockatf
+# This file is free software; see COPYING for copying conditions.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: chore
+      include: scope

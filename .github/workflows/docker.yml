@@ -1,0 +1,59 @@
+# docker.yml - publish the Docker image when a version tag is pushed.
+#
+# Copyright (C) 2026 mb6ockatf
+# This file is free software; see COPYING for copying conditions.
+#
+# Pushing a tag vX.Y.Z builds the image and pushes it to
+# ghcr.io/mb6ockatf/liprikontelegram as X.Y.Z, X.Y, vX.Y.Z and latest.  The
+# labels from docker/metadata-action replace the Dockerfile's
+# org.opencontainers.image.source, so the package links to this
+# repository.
+
+name: Docker
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/mb6ockatf/liprikontelegram
+
+jobs:
+  publish:
+    name: Publish ${{ github.ref_name }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=tag
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
