@@ -1,0 +1,41 @@
+LiprikonBoot -- a Telegram bot in Lua
+=====================================
+
+LiprikonBoot is a Telegram bot written in Lua with the telegram-bot-lua
+library.  It answers /ping, /cowsay, /ban and /kick, and /raw_api for a
+few raw Bot API calls.
+
+Screenshot:
+https://user-images.githubusercontent.com/104227451/176398049-a210d5ac-c583-4174-8d7c-11ad385bc305.png
+
+Requirements
+------------
+
+Lua 5.4 and LuaRocks with the luasec, mfr, argparse and
+telegram-bot-lua rocks.  The Dockerfile builds an image with all of
+them.
+
+Using it
+--------
+
+Put the bot's token in TOKEN at the top of main.lua, then run
+
+    lua main.lua
+
+or build and run the Docker image:
+
+    docker build -t liprikonboot .
+    docker run liprikonboot
+
+Reporting bugs
+--------------
+
+Report bugs at https://github.com/mb6ockatf/liprikontelegram/issues.
+
+Copying
+-------
+
+Copyright (C) 2022-2023 mb6ockatf
+
+LiprikonBoot is released under the GNU Affero General Public License,
+version 3; see COPYING.
